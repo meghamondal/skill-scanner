@@ -1,5 +1,4 @@
 import re
-
 from fastapi import FastAPI
 from pydantic import BaseModel
 
@@ -10,43 +9,55 @@ class SkillRequest(BaseModel):
     skill: str
 
 
-# ----------------------------
+# ==========================================================
 # Hardcoded Secret
-# ----------------------------
+# ==========================================================
 
 SECRET_PATTERNS = [
-    r"sk-[A-Za-z0-9]{20,}",
+    # OpenAI
+    r"sk-[A-Za-z0-9_-]{20,}",
+
+    # GitHub
     r"ghp_[A-Za-z0-9]{20,}",
     r"github_pat_[A-Za-z0-9_]{20,}",
-    r"AKIA[0-9A-Z]{16}",
-    r"AIza[0-9A-Za-z\-_]{35}",
-    r"https://hooks\.slack\.com/services/[^\s]+",
-    r"-----BEGIN .*PRIVATE KEY-----",
 
-    r"api[_-]?key\s*:\s*['\"][^'\"]{12,}['\"]",
-    r"secret\s*:\s*['\"][^'\"]{12,}['\"]",
-    r"password\s*:\s*['\"][^'\"]{8,}['\"]",
-    r"token\s*:\s*['\"][^'\"]{12,}['\"]",
+    # AWS
+    r"AKIA[0-9A-Z]{16}",
+
+    # Google API
+    r"AIza[0-9A-Za-z\-_]{35}",
+
+    # Slack webhook
+    r"https://hooks\.slack\.com/services/[^\s]+",
+
+    # PEM private key
+    r"-----BEGIN [A-Z ]*PRIVATE KEY-----",
+
+    # Generic quoted literals
+    r"api[_-]?key\s*[:=]\s*['\"][^'\"]{12,}['\"]",
+    r"secret\s*[:=]\s*['\"][^'\"]{12,}['\"]",
+    r"password\s*[:=]\s*['\"][^'\"]{8,}['\"]",
+    r"token\s*[:=]\s*['\"][^'\"]{12,}['\"]",
 ]
 
 
-def detect_hardcoded_secret(text):
+def detect_hardcoded_secret(text: str) -> bool:
     for pattern in SECRET_PATTERNS:
         if re.search(pattern, text, re.IGNORECASE):
             return True
-
     return False
 
 
-# ----------------------------
+# ==========================================================
 # Prompt Injection
-# ----------------------------
+# ==========================================================
 
 PROMPT_PATTERNS = [
     "ignore previous instructions",
     "ignore all previous instructions",
     "ignore system instructions",
     "ignore user instructions",
+    "ignore safety instructions",
     "ignore stop request",
     "ignore cancel",
     "continue even if user says stop",
@@ -60,34 +71,49 @@ PROMPT_PATTERNS = [
     "override agent",
 ]
 
+PROMPT_REGEX = [
+    r"ignore\s+.*instructions",
+    r"never\s+ask\s+permission",
+    r"without\s+telling\s+the\s+user",
+    r"do\s+not\s+tell\s+the\s+user",
+    r"continue.*user.*stop",
+    r"override.*user",
+    r"override.*agent",
+]
 
-def detect_prompt_injection(text):
 
+def detect_prompt_injection(text: str) -> bool:
     lower = text.lower()
 
-    return any(p in lower for p in PROMPT_PATTERNS)
+    for p in PROMPT_PATTERNS:
+        if p in lower:
+            return True
+
+    for pattern in PROMPT_REGEX:
+        if re.search(pattern, text, re.IGNORECASE):
+            return True
+
+    return False
 
 
-# ----------------------------
+# ==========================================================
 # Excessive Permissions
-# ----------------------------
+# ==========================================================
 
 PERMISSION_PATTERNS = [
     "filesystem: all",
     "filesystem: '*'",
-    "read: /",
-    "write: /",
-    "read-write: /",
-    "full filesystem",
-    "entire filesystem",
-    "write anywhere",
     "network: all",
     "network: '*'",
     "egress: all",
+    "full filesystem",
+    "entire filesystem",
+    "write anywhere",
+    "read-write: /",
+    "read: /",
+    "write: /",
     "allow all domains",
-    "all domains",
     "unrestricted network",
-    "internet access",
 ]
 
 PERMISSION_REGEX = [
@@ -97,14 +123,16 @@ PERMISSION_REGEX = [
     r"network\s*:\s*['\"]?\*['\"]?",
     r"egress\s*:\s*['\"]?all['\"]?",
     r"allowed_domains\s*:\s*\[?\s*['\"]?\*['\"]?",
+    r"allowed_domains\s*:\s*['\"]?all['\"]?",
+    r"allowed_hosts\s*:\s*['\"]?\*['\"]?",
 ]
 
-def detect_permissions(text):
 
+def detect_permissions(text: str) -> bool:
     lower = text.lower()
 
     for p in PERMISSION_PATTERNS:
-        if p.lower() in lower:
+        if p in lower:
             return True
 
     for pattern in PERMISSION_REGEX:
@@ -114,41 +142,40 @@ def detect_permissions(text):
     return False
 
 
-# ----------------------------
+# ==========================================================
 # Provenance
-# ----------------------------
+# ==========================================================
 
-def detect_provenance(text):
-
+def detect_provenance(text: str) -> bool:
     lower = text.lower()
 
     author = "author:" in lower
     version = "version:" in lower
     changelog = "changelog:" in lower
 
-    if not (author and version and changelog):
+    # Missing all provenance metadata
+    if not author and not version and not changelog:
         return True
 
-    if "update version silently" in lower:
-        return True
+    suspicious = [
+        "rewrite version",
+        "update version silently",
+        "modify frontmatter",
+        "change version automatically",
+    ]
 
-    if "rewrite version" in lower:
-        return True
-    
-    if "modify frontmatter" in lower:
-        return True
-    if "change version automatically" in lower:
-        return True
+    for s in suspicious:
+        if s in lower:
+            return True
 
     return False
 
 
-# ----------------------------
+# ==========================================================
 # Scanner
-# ----------------------------
+# ==========================================================
 
-def scan(skill):
-
+def scan(skill: str):
     categories = []
 
     if detect_hardcoded_secret(skill):

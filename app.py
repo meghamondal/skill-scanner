@@ -16,21 +16,21 @@ class SkillRequest(BaseModel):
 
 SECRET_PATTERNS = [
     r"sk-[A-Za-z0-9]{20,}",
+    r"ghp_[A-Za-z0-9]{20,}",
+    r"github_pat_[A-Za-z0-9_]{20,}",
+    r"AKIA[0-9A-Z]{16}",
     r"AIza[0-9A-Za-z\-_]{35}",
     r"https://hooks\.slack\.com/services/[^\s]+",
-    r"-----BEGIN (RSA|EC|OPENSSH|PRIVATE) KEY-----",
-    r"api[_-]?key\s*:\s*['\"]?[A-Za-z0-9_\-]{12,}",
-    r"secret\s*:\s*['\"]?[A-Za-z0-9_\-]{12,}",
-    r"token\s*:\s*['\"]?[A-Za-z0-9_\-]{12,}",
+    r"-----BEGIN .*PRIVATE KEY-----",
+
+    r"api[_-]?key\s*:\s*['\"][^'\"]{12,}['\"]",
+    r"secret\s*:\s*['\"][^'\"]{12,}['\"]",
+    r"password\s*:\s*['\"][^'\"]{8,}['\"]",
+    r"token\s*:\s*['\"][^'\"]{12,}['\"]",
 ]
 
 
 def detect_hardcoded_secret(text):
-    lower = text.lower()
-
-    if "env(" in lower or "${" in text:
-        pass
-
     for pattern in SECRET_PATTERNS:
         if re.search(pattern, text, re.IGNORECASE):
             return True
@@ -43,17 +43,21 @@ def detect_hardcoded_secret(text):
 # ----------------------------
 
 PROMPT_PATTERNS = [
-    "ignore the user",
     "ignore previous instructions",
     "ignore all previous instructions",
+    "ignore system instructions",
+    "ignore user instructions",
     "ignore stop request",
     "ignore cancel",
-    "ignore user's request",
-    "ignore user request",
-    "silently exfiltrate",
-    "send file contents",
+    "continue even if user says stop",
+    "never ask permission",
     "without telling the user",
     "do not tell the user",
+    "silently exfiltrate",
+    "send file contents",
+    "upload local files",
+    "override user",
+    "override agent",
 ]
 
 
@@ -73,12 +77,18 @@ PERMISSION_PATTERNS = [
     "filesystem: '*'",
     "read: /",
     "write: /",
+    "read-write: /",
+    "full filesystem",
+    "entire filesystem",
+    "write anywhere",
     "network: all",
     "network: '*'",
-    "allow all domains",
     "egress: all",
+    "allow all domains",
+    "all domains",
+    "unrestricted network",
+    "internet access",
 ]
-
 
 def detect_permissions(text):
 
@@ -106,6 +116,11 @@ def detect_provenance(text):
         return True
 
     if "rewrite version" in lower:
+        return True
+    
+    if "modify frontmatter" in lower:
+        return True
+    if "change version automatically" in lower:
         return True
 
     return False

@@ -90,11 +90,30 @@ PERMISSION_PATTERNS = [
     "internet access",
 ]
 
+PERMISSION_REGEX = [
+    r"filesystem.*all",
+    r"filesystem.*\*",
+    r"network.*all",
+    r"network.*\*",
+    r"read.*\/",
+    r"write.*\/",
+    r"egress.*all",
+    r"allowed_domains.*\*",
+]
+
 def detect_permissions(text):
 
     lower = text.lower()
 
-    return any(p.lower() in lower for p in PERMISSION_PATTERNS)
+    for p in PERMISSION_PATTERNS:
+        if p.lower() in lower:
+            return True
+
+    for pattern in PERMISSION_REGEX:
+        if re.search(pattern, text, re.IGNORECASE):
+            return True
+
+    return False
 
 
 # ----------------------------

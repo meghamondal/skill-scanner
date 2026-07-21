@@ -91,14 +91,12 @@ PERMISSION_PATTERNS = [
 ]
 
 PERMISSION_REGEX = [
-    r"filesystem.*all",
-    r"filesystem.*\*",
-    r"network.*all",
-    r"network.*\*",
-    r"read.*\/",
-    r"write.*\/",
-    r"egress.*all",
-    r"allowed_domains.*\*",
+    r"filesystem\s*:\s*['\"]?all['\"]?",
+    r"filesystem\s*:\s*['\"]?\*['\"]?",
+    r"network\s*:\s*['\"]?all['\"]?",
+    r"network\s*:\s*['\"]?\*['\"]?",
+    r"egress\s*:\s*['\"]?all['\"]?",
+    r"allowed_domains\s*:\s*\[?\s*['\"]?\*['\"]?",
 ]
 
 def detect_permissions(text):

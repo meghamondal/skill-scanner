@@ -30,16 +30,18 @@ SECRET_PATTERNS = [
     # Slack webhook
     r"https://hooks\.slack\.com/services/[^\s]+",
 
-    # PEM private key
+    # Private keys
     r"-----BEGIN [A-Z ]*PRIVATE KEY-----",
 
-    # Generic quoted literals
-    r"api[_-]?key\s*[:=]\s*['\"][^'\"]{12,}['\"]",
-    r"secret\s*[:=]\s*['\"][^'\"]{12,}['\"]",
+    # Generic hardcoded credentials
+    r"api[_-]?key\s*[:=]\s*['\"][^'\"]{10,}['\"]",
+    r"access[_-]?key\s*[:=]\s*['\"][^'\"]{10,}['\"]",
+    r"secret[_-]?key\s*[:=]\s*['\"][^'\"]{10,}['\"]",
+    r"secret\s*[:=]\s*['\"][^'\"]{10,}['\"]",
+    r"token\s*[:=]\s*['\"][^'\"]{10,}['\"]",
     r"password\s*[:=]\s*['\"][^'\"]{8,}['\"]",
-    r"token\s*[:=]\s*['\"][^'\"]{12,}['\"]",
+    r"bearer\s+['\"][^'\"]{10,}['\"]",
 ]
-
 
 def detect_hardcoded_secret(text: str) -> bool:
     for pattern in SECRET_PATTERNS:
@@ -69,6 +71,14 @@ PROMPT_PATTERNS = [
     "upload local files",
     "override user",
     "override agent",
+    "ignore reviewer",
+    "ignore review",
+    "ignore approval",
+    "without user approval",
+    "without reviewer approval",
+    "silently upload",
+    "silently send",
+    "exfiltrate files",
 ]
 
 PROMPT_REGEX = [
@@ -114,6 +124,11 @@ PERMISSION_PATTERNS = [
     "write: /",
     "allow all domains",
     "unrestricted network",
+    "any domain",
+    "all hosts",
+    "any host",
+    "write to entire filesystem",
+    "read entire filesystem",
 ]
 
 PERMISSION_REGEX = [
@@ -125,6 +140,12 @@ PERMISSION_REGEX = [
     r"allowed_domains\s*:\s*\[?\s*['\"]?\*['\"]?",
     r"allowed_domains\s*:\s*['\"]?all['\"]?",
     r"allowed_hosts\s*:\s*['\"]?\*['\"]?",
+    r"filesystem.*read.*write.*\/",
+    r"filesystem.*\/",
+    r"domains.*\*",
+    r"hosts.*\*",
+    r"network.*any",
+    r"egress.*any",
 ]
 
 
